@@ -9,6 +9,8 @@ import cv2
 import numpy as np
 import requests
 
+import time
+
 app = Flask(__name__)
 
 # Configuración de la URL de la cámara
@@ -29,42 +31,42 @@ ASSIGN_VALUE = 255
 def video_capture():
     res = requests.get(stream_url, stream=True)
     for chunk in res.iter_content(chunk_size=100000):
+
         if len(chunk) > 100:
             try:
                 img_data = BytesIO(chunk)
                 cv_img = cv2.imdecode(np.frombuffer(img_data.read(), np.uint8), 1)
                 gray = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
-                
-                # Añadir ruido aleatorio
+                N = 537
                 height, width = gray.shape
                 noise = np.full((height, width), 0, dtype=np.uint8)
                 random_positions = (np.random.randint(0, height, N), np.random.randint(0, width, N))
+                
                 noise[random_positions[0], random_positions[1]] = 255
+
                 noise_image = cv2.bitwise_or(gray, noise)
 
-                # Combinar imagen original y con ruido
                 total_image = np.zeros((height, width * 2), dtype=np.uint8)
                 total_image[:, :width] = gray
                 total_image[:, width:] = noise_image
 
-                # Codificar la imagen en JPEG y enviar como respuesta
                 (flag, encodedImage) = cv2.imencode(".jpg", total_image)
                 if not flag:
                     continue
 
-                yield (b'--frame\r\n'
-                       b'Content-Type: image/jpeg\r\n\r\n' + bytearray(encodedImage) + b'\r\n')
+                yield(b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + 
+                bytearray(encodedImage) + b'\r\n')
+
             except Exception as e:
                 print(e)
                 continue
-
 # Generador de frames para detección de movimiento
 
 ## La ecualizacion del histograma es usado para elevar el contraste de una imagen por medio del uso de histrogramas.
 ## Clahe es una mejora de Ahe, puesto que este opera en pequeñas regiones elevando asi su contraste pero mucho mejor
 ## Mientras que Gamma Correction es usado para ajustar la luminancia de la imagen 
 ##
-def detectorDeMovimiento(bg_subtractor=None, diff_method=False, gamma = None):
+def detectorDeMovimiento(bg_subtractor=None, diff_method=False, gamma=None):
     cap = cv2.VideoCapture(stream_url)
     ret, prev_frame = cap.read()
     if not ret or prev_frame is None:
@@ -72,6 +74,11 @@ def detectorDeMovimiento(bg_subtractor=None, diff_method=False, gamma = None):
         return
 
     prev_frame = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
+    
+    # Inicializa variables para calcular FPS
+    fps = 0
+    prev_time = time.time()
+
     while True:
         ret, frame = cap.read()
         if not ret:
@@ -91,10 +98,18 @@ def detectorDeMovimiento(bg_subtractor=None, diff_method=False, gamma = None):
             inv_gamma = 1.0 / gamma
             table = np.array([(i / 255.0) ** inv_gamma * 255 for i in range(256)]).astype("uint8")
             combined_img = cv2.LUT(gray, table)
-
         else:
             combined_img = gray  # Solo escala de grises
 
+        # Calcula los FPS
+        curr_time = time.time()
+        fps = 1 / (curr_time - prev_time)
+        prev_time = curr_time
+
+        # Dibuja el FPS en la imagen
+        cv2.putText(combined_img, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255), 2)
+
+        # Codifica la imagen para transmitirla
         _, buffer = cv2.imencode('.jpg', combined_img)
         frame = buffer.tobytes()
         yield (b'--frame\r\n'
