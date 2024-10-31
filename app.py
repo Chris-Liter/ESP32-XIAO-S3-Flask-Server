@@ -15,7 +15,7 @@ app = Flask(__name__)
 
 # Configuración de la URL de la cámara
 # _URL = 'http://192.168.61.97'
-_URL = 'http://192.168.0.116'
+_URL = 'http://192.168.10.28'
 _PORT = '81'
 _STREAM_ROUTE = '/stream'
 _SEP = ':'
@@ -66,7 +66,7 @@ def video_capture():
 ## Clahe es una mejora de Ahe, puesto que este opera en pequeñas regiones elevando asi su contraste pero mucho mejor
 ## Mientras que Gamma Correction es usado para ajustar la luminancia de la imagen 
 ##
-def detectorDeMovimiento(bg_subtractor=None, diff_method=False, gamma=None):
+def detectorDeMovimiento(bg_subtractor=None, diff_method=False, gamma=None, color=None, clahe=None, equa=None):
     cap = cv2.VideoCapture(stream_url)
     ret, prev_frame = cap.read()
     if not ret or prev_frame is None:
@@ -95,9 +95,20 @@ def detectorDeMovimiento(bg_subtractor=None, diff_method=False, gamma=None):
             prev_frame = gray
             combined_img = diff_frame
         elif gamma:
-            inv_gamma = 1.0 / gamma
+            inv_gamma = 0.5 / gamma
             table = np.array([(i / 255.0) ** inv_gamma * 255 for i in range(256)]).astype("uint8")
             combined_img = cv2.LUT(gray, table)
+        elif color:
+            combined_img = frame
+        elif clahe:
+            img_clahe = cv2.createCLAHE(clipLimit=3)
+            img = img_clahe.apply(gray) + 30
+            #_, ordinary_img = cv2.threshold(gray, 240, 255, cv2.THRESH_TOZERO_INV)
+            combined_img = img
+        elif equa:
+            img_clahe = cv2.equalizeHist(gray)
+            combined_img = img_clahe
+
         else:
             combined_img = gray  # Solo escala de grises
 
@@ -137,6 +148,24 @@ def video_stream3():
 def video_stream4():
     return Response(detectorDeMovimiento(gamma=True),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
+    
+@app.route('/video_stream5')
+def video_stream5():
+    return Response(detectorDeMovimiento(color=True),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+    
+    
+@app.route('/video_stream6')
+def video_stream6():
+    return Response(detectorDeMovimiento(clahe=True),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
+    
+@app.route('/video_stream7')
+def video_stream7():
+    return Response(detectorDeMovimiento(equa=True),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
 
 # Página principal
 @app.route('/')
