@@ -34,11 +34,9 @@
                padding-bottom: 3px;
                transition: color 0.3s ease;
           }
-
           a:hover {
                color: #db9711;
           }
-
           a::after {
                content: "";
                position: absolute;
@@ -51,15 +49,19 @@
                transform-origin: bottom right;
                transition: transform 0.3s ease;
           }
-
           a:hover::after {
                transform: scaleX(1);
                transform-origin: bottom left;
           }
           
-          .botones{
-               color= #db9711;
-
+          .botones {
+               color: #db9711;
+          }
+          
+          /* Oculta la barra deslizadora inicialmente */
+          #sliderContainer {
+               display: none;
+               margin-top: 20px;
           }
      </style>
      <title>Videostreaming ESP32-CAM</title>
@@ -73,30 +75,66 @@
           <!--<li><a class="botones" onclick="changeStream('/video_stream3')">Escala de Grises</a></li>-->
           <li><a class="botones" onclick="changeStream('/video_stream4')">Metodo Investigado(Gamma Correction)</a></li>
           <li><a class="botones" onclick="changeStream('/video_stream5')">Colores</a></li>
-
+          <li><a class="botones" onclick="changeStream('/video_stream8', true)">Ruido de sal y pimienta</a></li> 
+          <li><a class="botones" onclick="changeStream('/video_stream9')">Erosion</a></li>
+          <li><a class="botones" onclick="changeStream('/video_stream10')">Dilatacion</a></li>
+          <li><a class="botones" onclick="changeStream('/video_stream11')">Top Hat</a></li>
+          <li><a class="botones" onclick="changeStream('/video_stream12')">Black Hat</a></li>
+          <li><a class="botones" onclick="changeStream('/video_stream13')">Imagen original + (Top Hat - Black Hat)</a></li>
       </ul>
      <div class="containerHeader">
           <h1>Video Streaming</h1>
-          <img src="{{ url_for('static', filename='Header.webp') }}" alt="" width="45%">
+          <img id="headerImage" src="{{ url_for('static', filename='Header.webp') }}" alt="" width="45%">
      </div>
+     
      <!-- Contenedor de video -->
      <div>
-          <img id="videoStream" src="/video_stream1" alt="Video stream" width="50%">
+          <img id="videoStream" src="/video_stream1" alt="Video stream" width="40%">
+     </div>
+     
+     <!-- Contenedor de la barra deslizadora -->
+     <div id="sliderContainer">
+          <label for="noiseSlider">Nivel de ruido:</label>
+          <input type="range" id="noiseSlider" min="0" max="100" step="1" value="1" />
      </div>
 
      <script>
-          async function changeStream(route) {
+          async function changeStream(route, showSlider = false) {
                const videoStream = document.getElementById('videoStream');
-               
-               // Paso 1: Detener el stream actual asignando una URL vacía temporalmente
+               const sliderContainer = document.getElementById('sliderContainer');
+               const headerImage = document.getElementById('headerImage');
+
+               // Ocultar o mostrar la barra deslizadora
+               sliderContainer.style.display = showSlider ? 'block' : 'none';
+
+               // Detener el stream actual temporalmente
                videoStream.src = ''; 
+               await new Promise(resolve => setTimeout(resolve, 500));
 
-               // Paso 2: Esperar un momento para asegurar que se detiene el stream anterior
-               await new Promise(resolve => setTimeout(resolve, 500)); // espera 500ms
-
-               // Paso 3: Asignar la nueva ruta para iniciar el nuevo stream
+               // Asignar la nueva ruta para iniciar el nuevo stream
                videoStream.src = route;
+
+               // Cambiar el ancho de la imagen en función del tipo de enlace
+               if (['/video_stream9', '/video_stream10', '/video_stream11', '/video_stream12', '/video_stream13'].includes(route)) {
+                    videoStream.style.width = '75%';
+               } else {
+                    videoStream.style.width = '45%';
+               }
           }
+
+          // Escuchar el evento de cambio de la barra deslizadora
+          document.getElementById('noiseSlider').addEventListener('input', function () {
+               const kernelSize = this.value;
+               console.log(kernelSize);
+               fetch('/set_kernel_size', {
+                   method: 'POST',
+                   headers: {
+                       'Content-Type': 'application/json'
+                   },
+                   body: JSON.stringify({ kernelSize: kernelSize })
+               }).catch(error => console.error('Error al actualizar el tamaño del kernel:', error));
+           });
+           
      </script>
 </body>
 </html>
