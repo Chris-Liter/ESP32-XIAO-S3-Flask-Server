@@ -63,25 +63,52 @@
                display: none;
                margin-top: 20px;
           }
+          .labels {
+               display: flex;
+               justify-content: center;
+               margin-bottom: 10px;
+               width: 55%; /* Esto hará que los labels ocupen el mismo ancho que la imagen */
+               margin: 0 auto;
+           }
+           
+           .labels label {
+               flex: 1;
+               text-align: center;
+               display: none;
+           }
+           
+           .videoStream {
+               text-align: center;
+           }
      </style>
      <title>Videostreaming ESP32-CAM</title>
 </head>
 <body class="container">
-     <ul>
-          <li><a class="botones" onclick="changeStream('/video_stream1')">Sustracción de Fondo(Metodo para deteccion de movimiento)</a></li>
-          <li><a class="botones" onclick="changeStream('/video_stream2')">Diferencia de Fotogramas</a></li>
-          <li><a class="botones" onclick="changeStream('/video_stream6')">Clahe</a></li>
-          <li><a class="botones" onclick="changeStream('/video_stream7')">Equalizacion del histograma</a></li>
-          <!--<li><a class="botones" onclick="changeStream('/video_stream3')">Escala de Grises</a></li>-->
-          <li><a class="botones" onclick="changeStream('/video_stream4')">Metodo Investigado(Gamma Correction)</a></li>
-          <li><a class="botones" onclick="changeStream('/video_stream5')">Colores</a></li>
-          <li><a class="botones" onclick="changeStream('/video_stream8', true)">Ruido de sal y pimienta</a></li> 
-          <li><a class="botones" onclick="changeStream('/video_stream9')">Erosion</a></li>
-          <li><a class="botones" onclick="changeStream('/video_stream10')">Dilatacion</a></li>
-          <li><a class="botones" onclick="changeStream('/video_stream11')">Top Hat</a></li>
-          <li><a class="botones" onclick="changeStream('/video_stream12')">Black Hat</a></li>
-          <li><a class="botones" onclick="changeStream('/video_stream13')">Imagen original + (Top Hat - Black Hat)</a></li>
-      </ul>
+     <div>
+          <h3>Parte 1</h3>
+          <ul>
+              <li><a class="botones" onclick="changeStream('/video_stream1')">Sustracción de Fondo (Metodo para detección de movimiento)</a></li>
+              <li><a class="botones" onclick="changeStream('/video_stream2')">Diferencia de Fotogramas</a></li>
+              <li><a class="botones" onclick="changeStream('/video_stream6')">Clahe</a></li>
+              <li><a class="botones" onclick="changeStream('/video_stream7')">Equalización del histograma</a></li>
+              <!-- <li><a class="botones" onclick="changeStream('/video_stream3')">Escala de Grises</a></li> -->
+              <li><a class="botones" onclick="changeStream('/video_stream4')">Método Investigado (Gamma Correction)</a></li>
+              <li><a class="botones" onclick="changeStream('/video_stream5')">Colores</a></li>
+              <li><a class="botones" onclick="changeStream('/video_stream8', true)">Ruido de sal y pimienta</a></li> 
+          </ul>
+      </div>
+      
+      <div>
+          <h3>Parte 2</h3>
+          <ul>
+              <li><a class="botones" onclick="changeStream('/video_stream9')">Erosión</a></li>
+              <li><a class="botones" onclick="changeStream('/video_stream10')">Dilatación</a></li>
+              <li><a class="botones" onclick="changeStream('/video_stream11')">Top Hat</a></li>
+              <li><a class="botones" onclick="changeStream('/video_stream12')">Black Hat</a></li>
+              <li><a class="botones" onclick="changeStream('/video_stream13')">Imagen original + (Top Hat - Black Hat)</a></li>
+              <li><a class="botones" onclick="changeStream('/video_stream14')">Todo</a></li>
+          </ul>
+      </div>
      <div class="containerHeader">
           <h1>Video Streaming</h1>
           <img id="headerImage" src="{{ url_for('static', filename='Header.webp') }}" alt="" width="45%">
@@ -89,7 +116,30 @@
      
      <!-- Contenedor de video -->
      <div>
-          <img id="videoStream" src="/video_stream1" alt="Video stream" width="40%">
+          <div class="labels" >
+               <label>Original</label>
+               <label>Erosion</label>
+               <label>Dilatacion</label>
+               <label>Top Hat</label>
+               <label>Black Hat</label>
+               <label>Img Original + (Top Hat - Black Hat)</label>
+           </div>
+           
+          <img id="videoStream" src="/video_stream1" alt="Video stream" width="80%">
+     </div>
+
+     <!-- Contenedor de los controles deslizantes para ruido de sal y pimienta -->
+     <div id="sliderContainerr">
+          <label for="salt">Nivel de sal:</label>
+          <input type="range" id="salt" name="salt" min="0" max="30" step="0.5" value="0">
+          <br>
+          <label for="pepper">Nivel de pimienta:</label>
+          <input type="range" id="pepper" name="pepper" min="0" max="30" step="0.5" value="0">
+          <br>
+          <label for="mask">Tamaño de mascara:</label>
+          <input type="range" id="mask" name="mask" min="3" max="20" step="1" value="0">
+          <br>
+          <button id="updateSettings">Actualizar Configuración</button>
      </div>
      
      <!-- Contenedor de la barra deslizadora -->
@@ -103,6 +153,7 @@
                const videoStream = document.getElementById('videoStream');
                const sliderContainer = document.getElementById('sliderContainer');
                const headerImage = document.getElementById('headerImage');
+               const labels = document.querySelectorAll('.labels label'); // Captura los labels
 
                // Ocultar o mostrar la barra deslizadora
                sliderContainer.style.display = showSlider ? 'block' : 'none';
@@ -117,10 +168,31 @@
                // Cambiar el ancho de la imagen en función del tipo de enlace
                if (['/video_stream9', '/video_stream10', '/video_stream11', '/video_stream12', '/video_stream13'].includes(route)) {
                     videoStream.style.width = '75%';
-               } else {
-                    videoStream.style.width = '45%';
+               }else if(['/video_stream14'].includes(route)){
+                    videoStream.style.width = '55%';
+                    labels.forEach(label => label.style.display = "flex"); // Mostrar labels
+
+               } 
+               else {
+                    videoStream.style.width = '55%';
                }
           }
+
+
+          document.getElementById('updateSettings').addEventListener('click', function() {
+               const saltLevel = document.getElementById('salt').value;
+               const pepperLevel = document.getElementById('pepper').value;
+               const maskSize = document.getElementById('mask').value;
+
+               // Enviar los valores a tu servidor (ajusta la URL según sea necesario)
+               fetch('/update-settings', {
+                    method: 'POST',
+                    headers: {
+                         'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ saltLevel, pepperLevel, maskSize }),
+               });
+          });
 
           // Escuchar el evento de cambio de la barra deslizadora
           document.getElementById('noiseSlider').addEventListener('input', function () {
